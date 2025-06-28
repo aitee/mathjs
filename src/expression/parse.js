@@ -1096,6 +1096,11 @@ export const createParse = /* #__PURE__ */ factory(name, dependencies, ({
               !isConstantNode(last) &&
               (!isOperatorNode(last) || last.op === '!')) ||
           (state.token === '(')) {
+
+        if (!config.implicitMultiplication) {
+          throw createSyntaxError(state, 'Implicit multiplication is not enabled, use explicit multiplication with * or enable implicit multiplication');
+        }
+
         // parse implicit multiplication
         //
         // symbol:      implicit multiplication like '2a', '(2+3)a', 'a b'
@@ -1140,6 +1145,12 @@ export const createParse = /* #__PURE__ */ factory(name, dependencies, ({
 
           // Match the "symbol" part of the pattern, or a left parenthesis
           if (state.tokenType === TOKENTYPE.SYMBOL || state.token === '(' || state.token === 'in') {
+
+
+            if (!config.implicitMultiplication) {
+              throw createSyntaxError(state, 'Implicit multiplication is not enabled, use explicit multiplication with * or enable implicit multiplication');
+            }
+
             // We've matched the pattern "number / number symbol".
             // Rewind once and build the "number / number" node; the symbol will be consumed later
             Object.assign(state, tokenStates.pop())

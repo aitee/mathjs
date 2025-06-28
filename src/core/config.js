@@ -28,5 +28,9 @@ export const DEFAULT_CONFIG = {
 
   // random seed for seeded pseudo random number generation
   // null = randomly seed
-  randomSeed: null
+  randomSeed: null,
+
+  // enables implicit multiplication when true (default)
+  // when false, implicit multiplication syntax usage results in a syntax error
+  implicitMultiplication: true,
 }

@@ -1,10 +1,13 @@
 // test parse
 import assert from 'assert'
 import math from '../../../src/defaultInstance.js'
+import mathNoImplicit from '../../../src/defaultInstanceNoImplicitMultiplication.js'
 import { isMap, isObjectWrappingMap, isPartitionedMap } from '../../../src/utils/is.js'
 import { PartitionedMap } from '../../../src/utils/map.js'
 
 import { approxDeepEqual, approxEqual } from '../../../tools/approx.js'
+
+const parseImplicitDisallowed = mathNoImplicit.parse
 
 const parse = math.parse
 const ConditionalNode = math.ConditionalNode
@@ -1454,42 +1457,48 @@ describe('parse', function () {
       approxEqual(parseAndEval('8 * 2 * 2'), 32)
     })
 
+    const implicitMultiplyStringTestCases = [
+      { input: '4a', expected: '4 a' },
+      { input: '4 a', expected: '4 a' },
+      { input: 'a b', expected: 'a b' },
+      { input: '2a b', expected: '(2 a) b' },
+      { input: '2a * b', expected: '(2 a) * b' },
+      { input: '2a / b', expected: '(2 a) / b' },
+      { input: 'a b c', expected: '(a b) c' },
+      { input: 'a b*c', expected: '(a b) * c' },
+      { input: 'a*b c', expected: 'a * (b c)' },
+      { input: 'a/b c', expected: 'a / (b c)' },
+
+      { input: '1/2a', expected: '(1 / 2) a' },
+      { input: '8/2a/2', expected: '((8 / 2) a) / 2' },
+      { input: '8/2a*2', expected: '((8 / 2) a) * 2' },
+      { input: '4*2a', expected: '4 * (2 a)' },
+      { input: '3!10', expected: '(3!) 10' },
+
+      { input: '(2+3)a', expected: '(2 + 3) a' },
+      { input: '(2+3)2', expected: '(2 + 3) 2' },
+      { input: '(2)(3)+4', expected: '(2 3) + 4' },
+      { input: '2(3+4)', expected: '2 (3 + 4)' },
+
+      { input: '(2+3)(4+5)(3-1)', expected: '((2 + 3) (4 + 5)) (3 - 1)' }, // implicit multiplication
+
+      { input: '(2a)^3', expected: '(2 a) ^ 3' },
+      { input: '2a^3', expected: '2 (a ^ 3)' },
+      { input: '2(a)^3', expected: '2 (a ^ 3)' },
+      { input: '(2)a^3', expected: '2 (a ^ 3)' },
+      { input: '2^3a', expected: '(2 ^ 3) a' },
+      { input: '2^3(a)', expected: '(2 ^ 3) a' },
+      { input: '2^(3)(a)', expected: '(2 ^ 3) a' },
+      { input: 'sqrt(2a)', expected: 'sqrt(2 a)' },
+    ]
+
     it('should parse implicit multiplication', function () {
-      assert.strictEqual(parseAndStringifyWithParens('4a'), '4 a')
-      assert.strictEqual(parseAndStringifyWithParens('4 a'), '4 a')
-      assert.strictEqual(parseAndStringifyWithParens('a b'), 'a b')
-      assert.strictEqual(parseAndStringifyWithParens('2a b'), '(2 a) b')
-      assert.strictEqual(parseAndStringifyWithParens('2a * b'), '(2 a) * b')
-      assert.strictEqual(parseAndStringifyWithParens('2a / b'), '(2 a) / b')
-      assert.strictEqual(parseAndStringifyWithParens('a b c'), '(a b) c')
-      assert.strictEqual(parseAndStringifyWithParens('a b*c'), '(a b) * c')
-      assert.strictEqual(parseAndStringifyWithParens('a*b c'), 'a * (b c)')
-      assert.strictEqual(parseAndStringifyWithParens('a/b c'), 'a / (b c)')
-
-      assert.strictEqual(parseAndStringifyWithParens('1/2a'), '(1 / 2) a')
-      assert.strictEqual(parseAndStringifyWithParens('8/2a/2'), '((8 / 2) a) / 2')
-      assert.strictEqual(parseAndStringifyWithParens('8/2a*2'), '((8 / 2) a) * 2')
-      assert.strictEqual(parseAndStringifyWithParens('4*2a'), '4 * (2 a)')
-      assert.strictEqual(parseAndStringifyWithParens('3!10'), '(3!) 10')
-
-      assert.strictEqual(parseAndStringifyWithParens('(2+3)a'), '(2 + 3) a')
-      assert.strictEqual(parseAndStringifyWithParens('(2+3)2'), '(2 + 3) 2')
-      assert.strictEqual(parseAndStringifyWithParens('(2)(3)+4'), '(2 3) + 4')
-      assert.strictEqual(parseAndStringifyWithParens('2(3+4)'), '2 (3 + 4)')
+      for (const { input, expected } of implicitMultiplyStringTestCases) {
+        assert.strictEqual(parseAndStringifyWithParens(input), expected)
+      }
       assert.strictEqual(parseAndStringifyWithParens('(2+3)-2'), '(2 + 3) - 2') // no implicit multiplication, just a unary minus
       assert.strictEqual(parseAndStringifyWithParens('a(2+3)'), 'a(2 + 3)') // function call
       assert.strictEqual(parseAndStringifyWithParens('a.b(2+3)'), 'a.b(2 + 3)') // function call
-      assert.strictEqual(parseAndStringifyWithParens('(2+3)(4+5)'), '(2 + 3) (4 + 5)') // implicit multiplication
-      assert.strictEqual(parseAndStringifyWithParens('(2+3)(4+5)(3-1)'), '((2 + 3) (4 + 5)) (3 - 1)') // implicit multiplication
-
-      assert.strictEqual(parseAndStringifyWithParens('(2a)^3'), '(2 a) ^ 3')
-      assert.strictEqual(parseAndStringifyWithParens('2a^3'), '2 (a ^ 3)')
-      assert.strictEqual(parseAndStringifyWithParens('2(a)^3'), '2 (a ^ 3)')
-      assert.strictEqual(parseAndStringifyWithParens('(2)a^3'), '2 (a ^ 3)')
-      assert.strictEqual(parseAndStringifyWithParens('2^3a'), '(2 ^ 3) a')
-      assert.strictEqual(parseAndStringifyWithParens('2^3(a)'), '(2 ^ 3) a')
-      assert.strictEqual(parseAndStringifyWithParens('2^(3)(a)'), '(2 ^ 3) a')
-      assert.strictEqual(parseAndStringifyWithParens('sqrt(2a)'), 'sqrt(2 a)')
 
       assert.deepStrictEqual(parseAndEval('[2, 3] 2'), math.matrix([4, 6]))
       assert.deepStrictEqual(parseAndEval('[2, 3] a', { a: 2 }), math.matrix([4, 6]))
@@ -1499,6 +1508,13 @@ describe('parse', function () {
       assert.deepStrictEqual(parseAndEval('[1,2;3,4] [2,2]'), 4) // index
       assert.deepStrictEqual(parseAndEval('([1,2;3,4])[2,2]'), 4) // index
       assert.throws(function () { parseAndEval('2[1,2,3]') }, /Unexpected operator/)// index
+    })
+
+
+    it('should throw on implicit multiplication when disabled', function () {
+      for (const { input, _ } of implicitMultiplyStringTestCases) {
+        assert.throws(function () { parseImplicitDisallowed(input) }, /Implicit multiplication is not enabled/)
+      }
     })
 
     it('should index when the number config is bigint', function () {
